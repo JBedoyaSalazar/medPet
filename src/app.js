@@ -12,6 +12,8 @@ app.get('/', (req, res) => {
 Checkout README.md to start.</pre>`);
 });
 
-app.listen(config.PORT, () => {
-  console.log(`Server is listening on port:  ${config.PORT}`);
+const PORT = config.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Server is listening on port: ${PORT}`);
 });

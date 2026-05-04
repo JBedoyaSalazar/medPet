@@ -7,6 +7,8 @@ export default {
   API_TOKEN: process.env.API_TOKEN,
   BUSINESS_PHONE: process.env.BUSINESS_PHONE,
   API_VERSION: process.env.API_VERSION,
-  PORT: process.env.PORT || 3000,
+  PORT: Number(process.env.PORT) || 3000,
   BASE_URL: process.env.BASE_URL,
+  SPREADSHEET_ID: process.env.SPREADSHEET_ID,
+  // OPENAI_API_KEY: process.env.OPENAI_API_KEY,
 };
