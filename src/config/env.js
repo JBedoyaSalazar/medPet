@@ -10,5 +10,5 @@ export default {
   PORT: Number(process.env.PORT) || 3000,
   BASE_URL: process.env.BASE_URL,
   SPREADSHEET_ID: process.env.SPREADSHEET_ID,
-  // OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY,
 };

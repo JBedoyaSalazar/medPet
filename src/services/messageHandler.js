@@ -1,6 +1,6 @@
 import whatsappService from './whatsappService.js';
 import appendToSheet from './googleSheetsService.js';
-import openAiService from './openAiService.js';
+import geminiService from './geminiService.js';
 
 class MessageHandler {
 
@@ -11,7 +11,7 @@ class MessageHandler {
 
     async handleIncomingMessage(message, senderInfo) {
         if (message?.type === 'text') {
-            const incomingMessage = message.text.body.toLowerCase().trim();
+            const incomingMessage = message.text.body.toLowerCase().trim(); 
 
             if (this.isGreeting(incomingMessage)) {
                 await this.sendWelcomeMessage(message.from, message.id, senderInfo);
@@ -171,19 +171,30 @@ class MessageHandler {
         const state = this.assistandState[to];
         let response;
 
-        const menuMessage = "¿La respuesta fue de tu ayuda?"
-        const buttons = [
+        if (state.step === 'question') {
+            response = await geminiService(message);
+        }
+
+        delete this.assistandState[to];
+        await whatsappService.sendMessage(to, response);
+
+        let menuMessage = "¿La respuesta fue de tu ayuda?";
+        let buttons = [
             { type: 'reply', reply: { id: 'option_4', title: "Si, Gracias" } },
             { type: 'reply', reply: { id: 'option_5', title: 'Hacer otra pregunta' } },
             { type: 'reply', reply: { id: 'option_6', title: 'Emergencia' } }
         ];
 
-        if (state.step === 'question') {
-            response = await openAiService(message);
+        if (response === "Muchas solicitudes actualmente, inténtalo más tarde." || 
+            response === "Lo siento, ha ocurrido un error al procesar tu consulta con la IA.") {
+            menuMessage = "¿Qué te gustaría hacer?";
+            buttons = [
+                { type: 'reply', reply: { id: 'option_2', title: 'Volver a preguntar' } },
+                { type: 'reply', reply: { id: 'option_1', title: 'Agendar cita' } },
+                { type: 'reply', reply: { id: 'option_3', title: 'Ubicación' } }
+            ];
         }
 
-        delete this.assistandState[to];
-        await whatsappService.sendMessage(to, response);
         await whatsappService.sendInteractiveButtons(to, menuMessage, buttons);
     }
 
@@ -240,7 +251,7 @@ class MessageHandler {
     async sendLocation(to) {
         const latitude = 6.2071694;
         const longitude = -75.574607;
-        const name = 'Platzi Medellín';
+        const name = 'MedPet';
         const address = 'Cra. 43A #5A - 113, El Poblado, Medellín, Antioquia.'
 
         await whatsappService.sendLocationMessage(to, latitude, longitude, name, address);
