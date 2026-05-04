@@ -2,11 +2,11 @@ import { google } from 'googleapis';
 import path from 'path';
 import config from '../config/env.js';
 
-// Resolviendo la ruta relativa a las credenciales
-const credentialsPath = path.resolve('src/credentials/credentials.json');
-
 const auth = new google.auth.GoogleAuth({
-  keyFile: credentialsPath,
+  credentials: {
+    client_email: config.GOOGLE_CLIENT_EMAIL,
+    private_key: config.GOOGLE_PRIVATE_KEY,
+  },
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 

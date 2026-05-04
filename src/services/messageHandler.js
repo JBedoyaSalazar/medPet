@@ -1,27 +1,37 @@
 import whatsappService from './whatsappService.js';
-import appendToSheet from './googleSheetsService.js';
-import geminiService from './geminiService.js';
+import stateService from './state/stateService.js';
+import appointmentFlow from './flows/appointmentFlow.js';
+import assistantFlow from './flows/assistantFlow.js';
+import { 
+    welcomeMessage, 
+    menuMessage, 
+    welcomeButtons, 
+    contactInfo, 
+    locationInfo,
+    appointmentWaitMessage
+} from './responses/botResponses.js';
 
+/**
+ * Orchestrates incoming WhatsApp messages and routes them to the appropriate flow.
+ */
 class MessageHandler {
-
-    constructor() {
-        this.appointmentState = {};
-        this.assistandState = {};
-    }
-
+    /**
+     * Entry point for all incoming WhatsApp events.
+     * @param {Object} message - The WhatsApp message object.
+     * @param {Object} senderInfo - Metadata about the sender.
+     */
     async handleIncomingMessage(message, senderInfo) {
         if (message?.type === 'text') {
             const incomingMessage = message.text.body.toLowerCase().trim(); 
 
             if (this.isGreeting(incomingMessage)) {
-                await this.sendWelcomeMessage(message.from, message.id, senderInfo);
-                await this.sendWelcomeMenu(message.from);
+                await this.sendWelcome(message.from, message.id, senderInfo);
             } else if (incomingMessage === 'media') {
                 await this.sendMedia(message.from);
-            } else if (this.appointmentState[message.from]) {
-                await this.handleAppointmentFlow(message.from, incomingMessage);
-            } else if (this.assistandState[message.from]) {
-                await this.handleAssistandFlow(message.from, incomingMessage);
+            } else if (stateService.getAppointmentState(message.from)) {
+                await appointmentFlow.handleFlow(message.from, incomingMessage);
+            } else if (stateService.getAssistandState(message.from)) {
+                await assistantFlow.handleFlow(message.from, incomingMessage);
             } else {
                 await this.handleMenuOption(message.from, incomingMessage);
             }
@@ -42,221 +52,48 @@ class MessageHandler {
         return senderInfo.profile?.name || senderInfo.wa_id;
     }
 
-    async sendWelcomeMessage(to, messageId, senderInfo) {
+    async sendWelcome(to, messageId, senderInfo) {
         const name = this.getSenderName(senderInfo);
-        const welcomeMessage = `Hola ${name}, Bienvenido a MEDPET, Tu tienda de mascotas en línea. ¿En qué puedo ayudarte hoy?`;
-        await whatsappService.sendMessage(to, welcomeMessage, messageId);
+        await whatsappService.sendMessage(to, welcomeMessage(name), messageId);
+        await whatsappService.sendInteractiveButtons(to, menuMessage, welcomeButtons);
     }
-
-    async sendWelcomeMenu(to) {
-        const menuMessage = "Elige una Opción"
-        const buttons = [
-            {
-                type: 'reply', reply: { id: 'option_1', title: 'Agendar' }
-            },
-            {
-                type: 'reply', reply: { id: 'option_2', title: 'Consultar' }
-            },
-            {
-                type: 'reply', reply: { id: 'option_3', title: 'Ubicación' }
-            }
-        ];
-
-        await whatsappService.sendInteractiveButtons(to, menuMessage, buttons);
-    }
-
-    waiting = (delay, callback) => {
-        setTimeout(callback, delay);
-    };
 
     async handleMenuOption(to, option) {
         let response;
         switch (option) {
             case 'option_1':
-                this.appointmentState[to] = { step: 'name' }
+                stateService.setAppointmentState(to, { step: 'name' });
                 response = "Por favor, ingresa tu nombre:";
                 break;
             case 'option_2':
-                this.assistandState[to] = { step: 'question' };
+                stateService.setAssistandState(to, { step: 'question' });
                 response = "Realiza tu consulta";
-                break
+                break;
             case 'option_3':
                 response = 'Te esperamos en nuestra sucursal.';
-                await this.sendLocation(to);
-                break
+                await whatsappService.sendMessage(to, response);
+                await whatsappService.sendLocationMessage(to, locationInfo.latitude, locationInfo.longitude, locationInfo.name, locationInfo.address);
+                return;
+            case 'option_7':
+                response = appointmentWaitMessage;
+                break;
             case 'option_6':
-                response = "Si esto es una emergencia, te invitamos a llamar a nuestra linea de atención"
-                await this.sendContact(to);
+                response = "Si esto es una emergencia, te invitamos a llamar a nuestra linea de atención";
+                await whatsappService.sendMessage(to, response);
+                await whatsappService.sendContactMessage(to, contactInfo);
+                return;
             default:
-                response = "Lo siento, no entendí tu selección, Por Favor, elige una de las opciones del menú."
+                response = "Lo siento, no entendí tu selección, Por Favor, elige una de las opciones del menú.";
         }
         await whatsappService.sendMessage(to, response);
     }
 
     async sendMedia(to) {
-        // const mediaUrl = 'https://s3.amazonaws.com/gndx.dev/medpet-audio.aac';
-        // const caption = 'Bienvenida';
-        // const type = 'audio';
-
-        // const mediaUrl = 'https://s3.amazonaws.com/gndx.dev/medpet-imagen.png';
-        // const caption = '¡Esto es una Imagen!';
-        // const type = 'image';
-
-        // const mediaUrl = 'https://s3.amazonaws.com/gndx.dev/medpet-video.mp4';
-        // const caption = '¡Esto es una video!';
-        // const type = 'video';
-
         const mediaUrl = 'https://s3.amazonaws.com/gndx.dev/medpet-file.pdf';
         const caption = '¡Esto es un PDF!';
         const type = 'document';
-
         await whatsappService.sendMediaMessage(to, type, mediaUrl, caption);
     }
-
-    completeAppointment(to) {
-        const appointment = this.appointmentState[to];
-        delete this.appointmentState[to];
-
-        const userData = [
-            to,
-            appointment.name,
-            appointment.petName,
-            appointment.petType,
-            appointment.reason,
-            new Date().toISOString()
-        ]
-
-        appendToSheet(userData);
-
-        return `Gracias por agendar tu cita. 
-    Resumen de tu cita:
-    
-    Nombre: ${appointment.name}
-    Nombre de la mascota: ${appointment.petName}
-    Tipo de mascota: ${appointment.petType}
-    Motivo: ${appointment.reason}
-    
-    Nos pondremos en contacto contigo pronto para confirmar la fecha y hora de tu cita.`
-    }
-
-    async handleAppointmentFlow(to, message) {
-        const state = this.appointmentState[to];
-        let response;
-
-        switch (state.step) {
-            case 'name':
-                state.name = message;
-                state.step = 'petName';
-                response = "Gracias, Ahora, ¿Cuál es el nombre de tu Mascota?"
-                break;
-            case 'petName':
-                state.petName = message;
-                state.step = 'petType';
-                response = '¿Qué tipo de mascota es? (por ejemplo: perro, gato, huron, etc.)'
-                break;
-            case 'petType':
-                state.petType = message;
-                state.step = 'reason';
-                response = '¿Cuál es el motivo de la Consulta?';
-                break;
-            case 'reason':
-                state.reason = message;
-                response = this.completeAppointment(to);
-                break;
-        }
-        await whatsappService.sendMessage(to, response);
-    }
-
-    async handleAssistandFlow(to, message) {
-        const state = this.assistandState[to];
-        let response;
-
-        if (state.step === 'question') {
-            response = await geminiService(message);
-        }
-
-        delete this.assistandState[to];
-        await whatsappService.sendMessage(to, response);
-
-        let menuMessage = "¿La respuesta fue de tu ayuda?";
-        let buttons = [
-            { type: 'reply', reply: { id: 'option_4', title: "Si, Gracias" } },
-            { type: 'reply', reply: { id: 'option_5', title: 'Hacer otra pregunta' } },
-            { type: 'reply', reply: { id: 'option_6', title: 'Emergencia' } }
-        ];
-
-        if (response === "Muchas solicitudes actualmente, inténtalo más tarde." || 
-            response === "Lo siento, ha ocurrido un error al procesar tu consulta con la IA.") {
-            menuMessage = "¿Qué te gustaría hacer?";
-            buttons = [
-                { type: 'reply', reply: { id: 'option_2', title: 'Volver a preguntar' } },
-                { type: 'reply', reply: { id: 'option_1', title: 'Agendar cita' } },
-                { type: 'reply', reply: { id: 'option_3', title: 'Ubicación' } }
-            ];
-        }
-
-        await whatsappService.sendInteractiveButtons(to, menuMessage, buttons);
-    }
-
-    async sendContact(to) {
-        const contact = {
-            addresses: [
-                {
-                    street: "123 Calle de las Mascotas",
-                    city: "Ciudad",
-                    state: "Estado",
-                    zip: "12345",
-                    country: "País",
-                    country_code: "PA",
-                    type: "WORK"
-                }
-            ],
-            emails: [
-                {
-                    email: "contacto@medpet.com",
-                    type: "WORK"
-                }
-            ],
-            name: {
-                formatted_name: "MedPet Contacto",
-                first_name: "MedPet",
-                last_name: "Contacto",
-                middle_name: "",
-                suffix: "",
-                prefix: ""
-            },
-            org: {
-                company: "MedPet",
-                department: "Atención al Cliente",
-                title: "Representante"
-            },
-            phones: [
-                {
-                    phone: "+1234567890",
-                    wa_id: "1234567890",
-                    type: "WORK"
-                }
-            ],
-            urls: [
-                {
-                    url: "https://www.medpet.com",
-                    type: "WORK"
-                }
-            ]
-        };
-
-        await whatsappService.sendContactMessage(to, contact);
-    }
-
-    async sendLocation(to) {
-        const latitude = 6.2071694;
-        const longitude = -75.574607;
-        const name = 'MedPet';
-        const address = 'Cra. 43A #5A - 113, El Poblado, Medellín, Antioquia.'
-
-        await whatsappService.sendLocationMessage(to, latitude, longitude, name, address);
-    }
-
 }
 
 export default new MessageHandler();

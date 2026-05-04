@@ -11,4 +11,6 @@ export default {
   BASE_URL: process.env.BASE_URL,
   SPREADSHEET_ID: process.env.SPREADSHEET_ID,
   GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+  GOOGLE_CLIENT_EMAIL: process.env.GOOGLE_CLIENT_EMAIL,
+  GOOGLE_PRIVATE_KEY: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'), // Ensure newlines are parsed correctly
 };
