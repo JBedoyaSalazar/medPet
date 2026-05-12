@@ -8,7 +8,9 @@ import {
     welcomeButtons, 
     contactInfo, 
     locationInfo,
-    appointmentWaitMessage
+    appointmentWaitMessage,
+    goodbyeMessage,
+    goodbyeButtons
 } from './responses/botResponses.js';
 
 /**
@@ -77,6 +79,13 @@ class MessageHandler {
             case 'option_7':
                 response = appointmentWaitMessage;
                 break;
+            case 'option_4':
+                await whatsappService.sendInteractiveButtons(to, goodbyeMessage, goodbyeButtons);
+                return;
+            case 'option_8':
+                response = "Chao, espero tengas un buen día";
+                await whatsappService.sendMessage(to, response);
+                return;
             case 'option_6':
                 response = "Si esto es una emergencia, te invitamos a llamar a nuestra linea de atención";
                 await whatsappService.sendMessage(to, response);

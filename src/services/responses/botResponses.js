@@ -46,3 +46,9 @@ export const appointmentSummaryButtons = [
 ];
 
 export const appointmentWaitMessage = "Dentro de los próximos 30 minutos nos pondremos en contacto contigo para programar tu cita.";
+
+export const goodbyeMessage = "¡Gracias por tu consulta! ¿Qué deseas hacer ahora?";
+export const goodbyeButtons = [
+    { type: 'reply', reply: { id: 'option_8', title: 'Finalizar chat' } },
+    { type: 'reply', reply: { id: 'option_3', title: 'Ubicación' } }
+];
