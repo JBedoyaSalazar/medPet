@@ -68,6 +68,7 @@ class MessageHandler {
                 response = "Por favor, ingresa tu nombre:";
                 break;
             case 'option_2':
+            case 'option_5':
                 stateService.setAssistandState(to, { step: 'question' });
                 response = "Realiza tu consulta";
                 break;
