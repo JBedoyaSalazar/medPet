@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "link": "ngrok http --domain=answering-labrador-bash.ngrok-free.dev 3000",
     "start": "node src/app.js",
     "dev": "nodemon src/app.js"
@@ -21,6 +21,7 @@
     "googleapis": "^171.4.0"
   },
   "devDependencies": {
+    "jest": "^30.4.2",
     "nodemon": "^3.1.14"
   }
 }
