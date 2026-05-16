@@ -12,6 +12,12 @@ const auth = new google.auth.GoogleAuth({
 
 const sheets = google.sheets({ version: 'v4', auth });
 
+/**
+ * Appends a row of data to the Google Sheets document.
+ * 
+ * @param {Array<string>} data - An array of values representing a single row to insert into the sheet.
+ * @returns {Promise<Object|undefined>} The API response object or undefined if an error occurs.
+ */
 const appendToSheet = async (data) => {
   try {
     const spreadsheetId = config.SPREADSHEET_ID;
@@ -22,7 +28,7 @@ const appendToSheet = async (data) => {
 
     const response = await sheets.spreadsheets.values.append({
       spreadsheetId,
-      range: "'Hoja 1'!A:H", // Rango actualizado hasta la columna H
+      range: "'Hoja 1'!A:H",
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [data],
@@ -36,6 +42,13 @@ const appendToSheet = async (data) => {
   }
 };
 
+/**
+ * Retrieves the current existing appointments from Google Sheets.
+ * Extracts the confirmed appointment date, reason, and pet type from the rows to be used
+ * for AI context and business validation rules.
+ * 
+ * @returns {Promise<Array<{date: string, reason: string, petType: string}>>} A list of scheduled appointments.
+ */
 export const getExistingAppointments = async () => {
   try {
     const spreadsheetId = config.SPREADSHEET_ID;
@@ -54,12 +67,11 @@ export const getExistingAppointments = async () => {
       return [];
     }
 
-    // Mapeamos las filas. La columna H (índice 7) es la fecha de la cita final confirmada (appointmentDate)
     const appointments = rows.map(row => {
       return {
-        date: row[7], // Fecha de la cita confirmada (appointmentDate)
-        reason: row[4], // Motivo
-        petType: row[3] // Tipo de mascota
+        date: row[7],
+        reason: row[4],
+        petType: row[3]
       };
     }).filter(appt => appt.date && !isNaN(new Date(appt.date).getTime()));
 

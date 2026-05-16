@@ -5,13 +5,18 @@ import { appointmentSummaryButtons } from '../responses/botResponses.js';
 import { proposeAppointmentsWithGemini, validateAppointment, parseDateWithGemini } from '../schedulingService.js';
 
 /**
- * Handles the step-by-step dialog for booking a veterinary appointment.
+ * @class AppointmentFlow
+ * @description Orchestrates the conversational flow for booking veterinary appointments via WhatsApp.
+ * Handles state transitions, gathers user input, integrates with Gemini for AI-driven scheduling,
+ * and persists the final booking data to Google Sheets.
  */
 class AppointmentFlow {
     /**
-     * Processes text input during the appointment booking flow.
-     * @param {string} to - User's WhatsApp ID.
-     * @param {string} message - User's text input.
+     * Processes incoming text messages for the appointment booking flow, transitioning between state steps.
+     * 
+     * @param {string} to - The WhatsApp ID of the user.
+     * @param {string} message - The text input provided by the user.
+     * @returns {Promise<void>}
      */
     async handleFlow(to, message) {
         const state = stateService.getAppointmentState(to);
@@ -52,7 +57,6 @@ class AppointmentFlow {
                 response = aiProposal + "\n\nPor favor, responde confirmando la fecha y hora final que eliges (ej: 'El martes a las 14:00').";
                 break;
             case 'proposeDate':
-                // Utilizamos Gemini para interpretar el lenguaje natural (ej: "el martes a las 3")
                 response = "Procesando tu fecha... ⏳";
                 await whatsappService.sendMessage(to, response);
 
@@ -62,8 +66,8 @@ class AppointmentFlow {
                     response = "No logré entender bien la fecha u hora que deseas. ¿Podrías indicarla más claro? (Ej: 'Mañana a las 10:00 AM' o '20 de mayo a las 14:00')";
                     break;
                 }
+
                 const existingAppointments = await getExistingAppointments();
-                
                 const validation = validateAppointment(requestedDateString, existingAppointments);
                 
                 if (!validation.valid) {
@@ -71,7 +75,7 @@ class AppointmentFlow {
                     break;
                 }
                 
-                state.appointmentDate = requestedDateString; // This is the final parsed ISO date
+                state.appointmentDate = requestedDateString;
                 
                 const summary = await this.completeAppointment(to, state);
                 await whatsappService.sendMessage(to, summary);
@@ -85,6 +89,14 @@ class AppointmentFlow {
         await whatsappService.sendMessage(to, response);
     }
 
+    /**
+     * Finalizes the booking process by clearing the user state, appending the record to Google Sheets,
+     * and generating a summary message.
+     * 
+     * @param {string} to - The WhatsApp ID of the user.
+     * @param {Object} appointment - The accumulated state object containing appointment details.
+     * @returns {Promise<string>} - The formatted summary message for the user.
+     */
     async completeAppointment(to, appointment) {
         stateService.clearAppointmentState(to);
 
@@ -96,9 +108,9 @@ class AppointmentFlow {
             appointment.petName,
             appointment.petType,
             appointment.reason,
-            new Date().toISOString(), // Columna F: Fecha de la solicitud
-            appointment.wishDate,     // Columna G: wishDate (lo que el usuario pidió inicialmente)
-            appointment.appointmentDate // Columna H: appointmentDate (la fecha final pactada e interpretada por la IA)
+            new Date().toISOString(),
+            appointment.wishDate,
+            appointment.appointmentDate
         ];
 
         await appendToSheet(userData);

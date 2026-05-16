@@ -42,7 +42,7 @@ export const locationInfo = {
 };
 export const appointmentSummaryButtons = [
     { type: 'reply', reply: { id: 'option_2', title: 'Hacer una consulta' } },
-    { type: 'reply', reply: { id: 'option_7', title: 'Esperar respuesta' } }
+    { type: 'reply', reply: { id: 'option_3', title: 'Ubicación' } }
 ];
 
 export const appointmentWaitMessage = "Dentro de los próximos 30 minutos nos pondremos en contacto contigo para programar tu cita.";
